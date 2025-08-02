@@ -3,7 +3,9 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const port = process.env.PORT || 3000;
+
+// CRITICAL FIX: Use PORT environment variable that Render provides
+const port = process.env.PORT || 10000; // Changed from 3000 to 10000 to match your logs
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
@@ -201,7 +203,9 @@ app.get('/health', (req, res) => {
     res.json({ 
         status: 'healthy', 
         timestamp: new Date().toISOString(),
-        service: 'RAG API'
+        service: 'RAG API',
+        port: port,
+        env: process.env.NODE_ENV || 'development'
     });
 });
 
@@ -359,11 +363,40 @@ app.use((req, res) => {
     });
 });
 
-// Start server
-app.listen(port, '0.0.0.0', () => {
+// CRITICAL FIX: Proper server binding for Render
+const server = app.listen(port, '0.0.0.0', () => {
     console.log(`RAG API server running on port ${port}`);
     console.log(`Health check: http://localhost:${port}/health`);
     console.log(`RAG endpoint: POST http://localhost:${port}/rag/query`);
+    
+    // Additional debug info for Render
+    const address = server.address();
+    console.log(`Server bound to ${address.address}:${address.port}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Process ID: ${process.pid}`);
+});
+
+// Handle server errors
+server.on('error', (err) => {
+    console.error('Server error:', err);
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${port} is already in use`);
+    }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+    });
 });
 
 module.exports = app;
