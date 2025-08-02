@@ -360,7 +360,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`RAG API server running on port ${port}`);
     console.log(`Health check: http://localhost:${port}/health`);
     console.log(`RAG endpoint: POST http://localhost:${port}/rag/query`);
